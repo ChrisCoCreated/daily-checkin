@@ -105,7 +105,7 @@ export function generateTwiML(xml: string): string {
 }
 
 export function say(text: string, voice = 'Polly.Emma-Neural'): string {
-  return `<Say voice="${voice}">${escapeXml(text)}</Say>`;
+  return `<Say voice="${voice}"><amazon:domain name="conversational">${escapeXml(text)}</amazon:domain></Say>`;
 }
 
 export function gather(

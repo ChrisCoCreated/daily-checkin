@@ -117,15 +117,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Determine if we should chain another Gather
-    // Strategy: If chunkIndex > 0, we're already chaining - continue if below max
-    // If chunkIndex is 0, we need to decide: could this be a timeout?
-    // Since we can't detect timeout directly, we'll chain if we're below max chunks
-    // The next Gather will either get more speech (continue) or empty (natural end)
-    const shouldChain = chunkIndex < MAX_CHUNKS - 1; // -1 because we're about to increment
+    // Strategy:
+    // - chunkIndex=0: Do a quick continuation check (3 seconds) to see if user is still speaking
+    //   If they are, chain to chunkIndex=1. If not, proceed immediately (no pause)
+    // - chunkIndex>0: We're already chaining, continue if below max
+    const shouldChain = chunkIndex < MAX_CHUNKS - 1;
     
     if (shouldChain) {
-      // Chain another Gather to continue listening
-      // This handles both timeout scenarios (user still speaking) and allows natural end detection
       const nextChunkIndex = chunkIndex + 1;
       const nextChunkUrl = buildUrl('/api/call/gather', {
         callSid,
@@ -139,10 +137,14 @@ export async function POST(request: NextRequest) {
         partial: 'true',
       });
       
+      // For chunkIndex=0: Use short timeout (3 seconds) to quickly detect if user is done
+      // For chunkIndex>0: Use full 60 seconds since we know user is still speaking
+      const timeout = chunkIndex === 0 ? 3 : 60;
+      
       // Continue listening without asking a new question
-      // If user is done, next Gather will return empty and we'll proceed
+      // If user is done, next Gather will return empty quickly (3 sec for first check, immediate for others)
       const twiml = generateTwiML(
-        gather(nextChunkUrl, undefined, 60, 'auto', nextPartialResultUrl)
+        gather(nextChunkUrl, undefined, timeout, 'auto', nextPartialResultUrl)
       );
 
       return new NextResponse(twiml, {
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Max chunks reached or natural end - proceed to next question or close
+    // Max chunks reached - proceed to next question or close
     console.log(`Chunk limit reached (chunkIndex: ${chunkIndex}) for question ${questionIndex}, proceeding to next step`);
     
     // Ask follow-up questions (max 2 follow-ups)
