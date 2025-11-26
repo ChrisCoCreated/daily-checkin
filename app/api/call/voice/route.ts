@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateTwiML, say, gather, hangup } from '@/lib/twilio';
-import { GREETING_PROMPT } from '@/lib/prompts';
-import { getCheckinByCallId, updateCheckin } from '@/lib/db';
+import { generateTwiML, say, gather, hangup, saySlow } from '@/lib/twilio';
+import { getCheckinByCallId, updateCheckin, getConversationSetById, getContactById, getConversationSetByName } from '@/lib/db';
+import { renderTemplate } from '@/lib/conversations';
 import { buildUrl } from '@/lib/url';
 
 // Ensure this route is publicly accessible for Twilio webhooks
@@ -72,6 +72,36 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Load conversation set and contact
+    const checkin = await getCheckinByCallId(callSid);
+    let conversationSet = null;
+    let contact = null;
+    let greetingText = 'Hello! This is your daily check-in call. How are you feeling today?'; // Default fallback
+
+    if (checkin) {
+      // Load conversation set
+      if (checkin.conversation_set_id) {
+        conversationSet = await getConversationSetById(checkin.conversation_set_id);
+      } else {
+        // Fallback to "current" conversation set if none specified
+        const defaultSet = await getConversationSetByName('current');
+        conversationSet = defaultSet;
+      }
+
+      // Load contact if available
+      if (checkin.contact_id) {
+        contact = await getContactById(checkin.contact_id);
+      }
+
+      // Render greeting template with contact variables
+      if (conversationSet) {
+        greetingText = renderTemplate(conversationSet.greeting_template, contact);
+      }
+    }
+
+    // Use slow speech if contact has talk_slowly enabled
+    const sayFunction = contact?.talk_slowly ? saySlow : say;
+
     // Greeting and gather response
     // Start with chunkIndex 0 for the first question
     const gatherUrl = buildUrl('/api/call/gather', { 
@@ -87,7 +117,7 @@ export async function POST(request: NextRequest) {
     });
     
     const twiml = generateTwiML(
-      say(GREETING_PROMPT) +
+      sayFunction(greetingText) +
       gather(gatherUrl, undefined, 60, 'auto', partialResultUrl)
     );
 

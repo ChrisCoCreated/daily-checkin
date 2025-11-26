@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateTwiML, say, hangup, gather } from '@/lib/twilio';
-import { CLOSING_PROMPT } from '@/lib/prompts';
-import { getCheckinByCallId, updateCheckin } from '@/lib/db';
+import { generateTwiML, say, hangup, gather, saySlow } from '@/lib/twilio';
+import { getCheckinByCallId, updateCheckin, getConversationSetById, getContactById, getConversationSetByName } from '@/lib/db';
 import { analyzeTranscript, generateFollowUpResponse } from '@/lib/analysis';
+import { renderTemplate } from '@/lib/conversations';
 import { buildUrl } from '@/lib/url';
 
 // Ensure this route is publicly accessible for Twilio webhooks
@@ -80,7 +80,9 @@ export async function POST(request: NextRequest) {
           } else {
             // Process transcript and close
             await processTranscript(checkin.id, fullTranscript);
-            return new NextResponse(generateTwiML(say(CLOSING_PROMPT) + hangup()), {
+            const closingText = await getClosingText(checkin);
+            const sayFunction = await getSayFunction(checkin);
+            return new NextResponse(generateTwiML(sayFunction(closingText) + hangup()), {
               headers: { 'Content-Type': 'text/xml' },
             });
           }
@@ -101,7 +103,9 @@ export async function POST(request: NextRequest) {
           // Later questions - process existing transcript and close
           const fullTranscript = checkin.transcript || '';
           await processTranscript(checkin.id, fullTranscript);
-          return new NextResponse(generateTwiML(say(CLOSING_PROMPT) + hangup()), {
+          const closingText = await getClosingText(checkin);
+          const sayFunction = await getSayFunction(checkin);
+          return new NextResponse(generateTwiML(sayFunction(closingText) + hangup()), {
             headers: { 'Content-Type': 'text/xml' },
           });
         }
@@ -175,7 +179,9 @@ export async function POST(request: NextRequest) {
     // Done with questions - analyze and close
     await processTranscript(checkin.id, currentTranscript);
     
-    return new NextResponse(generateTwiML(say(CLOSING_PROMPT) + hangup()), {
+    const closingText = await getClosingText(checkin);
+    const sayFunction = await getSayFunction(checkin);
+    return new NextResponse(generateTwiML(sayFunction(closingText) + hangup()), {
       headers: { 'Content-Type': 'text/xml' },
     });
   } catch (error) {
@@ -192,7 +198,24 @@ async function handleNextQuestion(
   currentTranscript: string,
   nextQuestionIndex: number
 ): Promise<NextResponse> {
-  const nextQuestion = await generateFollowUpResponse(currentTranscript);
+  // Load checkin to get conversation set info
+  const checkin = await getCheckinByCallId(callSid);
+  let conversationSetName = null;
+  
+  if (checkin?.conversation_set_id) {
+    const conversationSet = await getConversationSetById(checkin.conversation_set_id);
+    conversationSetName = conversationSet?.name || null;
+  } else {
+    // Fallback to "current" if none specified
+    const defaultSet = await getConversationSetByName('current');
+    conversationSetName = defaultSet?.name || null;
+  }
+
+  const nextQuestion = await generateFollowUpResponse(currentTranscript, conversationSetName);
+  
+  // Get say function based on contact settings
+  const sayFunction = await getSayFunction(checkin);
+  
   const nextGatherUrl = buildUrl('/api/call/gather', {
     callSid,
     questionIndex: String(nextQuestionIndex),
@@ -206,13 +229,48 @@ async function handleNextQuestion(
   });
   
   const twiml = generateTwiML(
-    say(nextQuestion) +
+    sayFunction(nextQuestion) +
     gather(nextGatherUrl, undefined, 60, 'auto', nextPartialResultUrl)
   );
 
   return new NextResponse(twiml, {
     headers: { 'Content-Type': 'text/xml' },
   });
+}
+
+async function getClosingText(checkin: { conversation_set_id: string | null; contact_id: string | null } | null): Promise<string> {
+  let conversationSet = null;
+  let contact = null;
+
+  if (checkin) {
+    if (checkin.conversation_set_id) {
+      conversationSet = await getConversationSetById(checkin.conversation_set_id);
+    } else {
+      const defaultSet = await getConversationSetByName('current');
+      conversationSet = defaultSet;
+    }
+
+    if (checkin.contact_id) {
+      contact = await getContactById(checkin.contact_id);
+    }
+  }
+
+  if (conversationSet) {
+    return renderTemplate(conversationSet.closing_template, contact);
+  }
+
+  // Fallback to default
+  return 'Thanks for chatting with me today. Take care and have a good day.';
+}
+
+async function getSayFunction(checkin: { contact_id: string | null } | null): Promise<typeof say | typeof saySlow> {
+  if (checkin?.contact_id) {
+    const contact = await getContactById(checkin.contact_id);
+    if (contact?.talk_slowly) {
+      return saySlow;
+    }
+  }
+  return say;
 }
 
 async function processTranscript(checkinId: string, transcript: string) {

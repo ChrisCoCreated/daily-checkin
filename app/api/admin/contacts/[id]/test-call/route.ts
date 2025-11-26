@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContactById } from '@/lib/db';
+import { getContactById, getConversationSetByName } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { initiateCall } from '@/lib/twilio';
 import { createCheckin } from '@/lib/db';
@@ -32,12 +32,18 @@ export async function POST(
         { status: 500 }
       );
     }
+
+    // Get optional conversation set from request body (default to "personalized" for contacts)
+    const body = await request.json().catch(() => ({}));
+    const conversationSetName = body.conversation_set_name || 'personalized';
+    const conversationSet = await getConversationSetByName(conversationSetName);
+    const conversationSetId = conversationSet?.id || null;
     
     const webhookUrl = buildUrl('/api/call/voice');
     
     const callId = await initiateCall(contact.number_to_call, webhookUrl);
     
-    // Create initial checkin record
+    // Create initial checkin record with contact and conversation set
     await createCheckin({
       call_id: callId,
       transcript: null,
@@ -47,6 +53,8 @@ export async function POST(
       needs_escalation: false,
       escalation_reason: null,
       responded: false,
+      contact_id: contact.id,
+      conversation_set_id: conversationSetId,
     });
     
     return NextResponse.json({

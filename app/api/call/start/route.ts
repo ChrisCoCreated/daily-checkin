@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initiateCall } from '@/lib/twilio';
-import { createCheckin } from '@/lib/db';
+import { createCheckin, getConversationSetByName } from '@/lib/db';
 import { buildUrl } from '@/lib/url';
 
 const personNumber = process.env.PERSON_NUMBER;
@@ -33,6 +33,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get optional parameters from request body
+    const body = await request.json().catch(() => ({}));
+    const conversationSetName = body.conversation_set_name || 'current';
+    const contactId = body.contact_id || null;
+
+    // Get conversation set ID (default to "current")
+    const conversationSet = await getConversationSetByName(conversationSetName);
+    const conversationSetId = conversationSet?.id || null;
+
     const webhookUrl = buildUrl('/api/call/voice');
     
     const callId = await initiateCall(personNumber, webhookUrl);
@@ -47,6 +56,8 @@ export async function POST(request: NextRequest) {
       needs_escalation: false,
       escalation_reason: null,
       responded: false,
+      contact_id: contactId,
+      conversation_set_id: conversationSetId,
     });
 
     return NextResponse.json({ 

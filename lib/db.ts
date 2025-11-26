@@ -30,14 +30,16 @@ export interface Checkin {
   needs_escalation: boolean;
   escalation_reason: string | null;
   responded: boolean;
+  contact_id: string | null;
+  conversation_set_id: string | null;
 }
 
 export async function createCheckin(data: Omit<Checkin, 'id' | 'call_time'>): Promise<Checkin> {
   const result = await pool.query(
     `INSERT INTO checkins (
       call_id, transcript, sentiment, risk_level, keywords,
-      needs_escalation, escalation_reason, responded
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      needs_escalation, escalation_reason, responded, contact_id, conversation_set_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING *`,
     [
       data.call_id,
@@ -48,6 +50,8 @@ export async function createCheckin(data: Omit<Checkin, 'id' | 'call_time'>): Pr
       data.needs_escalation,
       data.escalation_reason,
       data.responded,
+      data.contact_id || null,
+      data.conversation_set_id || null,
     ]
   );
   return result.rows[0] as Checkin;
@@ -182,5 +186,96 @@ export async function deleteContact(id: string): Promise<void> {
   const result = await pool.query('DELETE FROM contacts WHERE id = $1', [id]);
   if (result.rowCount === 0) {
     throw new Error(`Contact with id ${id} not found`);
+  }
+}
+
+export interface ConversationSet {
+  id: string;
+  name: string;
+  description: string | null;
+  greeting_template: string;
+  follow_up_template: string | null;
+  closing_template: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export async function getConversationSetById(id: string): Promise<ConversationSet | null> {
+  const result = await pool.query(
+    'SELECT * FROM conversation_sets WHERE id = $1 LIMIT 1',
+    [id]
+  );
+  return result.rows[0] as ConversationSet || null;
+}
+
+export async function getConversationSetByName(name: string): Promise<ConversationSet | null> {
+  const result = await pool.query(
+    'SELECT * FROM conversation_sets WHERE name = $1 LIMIT 1',
+    [name]
+  );
+  return result.rows[0] as ConversationSet || null;
+}
+
+export async function getAllConversationSets(): Promise<ConversationSet[]> {
+  const result = await pool.query(
+    'SELECT * FROM conversation_sets ORDER BY name ASC'
+  );
+  return result.rows as ConversationSet[];
+}
+
+export async function createConversationSet(
+  data: Omit<ConversationSet, 'id' | 'created_at' | 'updated_at'>
+): Promise<ConversationSet> {
+  const result = await pool.query(
+    `INSERT INTO conversation_sets (
+      name, description, greeting_template, follow_up_template, closing_template
+    ) VALUES ($1, $2, $3, $4, $5)
+    RETURNING *`,
+    [
+      data.name,
+      data.description,
+      data.greeting_template,
+      data.follow_up_template,
+      data.closing_template,
+    ]
+  );
+  return result.rows[0] as ConversationSet;
+}
+
+export async function updateConversationSet(
+  id: string,
+  updates: Partial<Omit<ConversationSet, 'id' | 'created_at' | 'updated_at'>>
+): Promise<ConversationSet> {
+  const keys = Object.keys(updates).filter(key => updates[key as keyof typeof updates] !== undefined);
+  if (keys.length === 0) {
+    const result = await pool.query('SELECT * FROM conversation_sets WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      throw new Error(`ConversationSet with id ${id} not found`);
+    }
+    return result.rows[0] as ConversationSet;
+  }
+  
+  const setClause = keys
+    .map((key, i) => `${key} = $${i + 2}`)
+    .join(', ');
+  
+  const values = [id, ...keys.map(key => updates[key as keyof typeof updates])];
+  
+  const result = await pool.query(
+    `UPDATE conversation_sets SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
+    values
+  );
+  
+  if (result.rows.length === 0) {
+    throw new Error(`ConversationSet with id ${id} not found`);
+  }
+  
+  return result.rows[0] as ConversationSet;
+}
+
+export async function deleteConversationSet(id: string): Promise<void> {
+  const result = await pool.query('DELETE FROM conversation_sets WHERE id = $1', [id]);
+  if (result.rowCount === 0) {
+    throw new Error(`ConversationSet with id ${id} not found`);
   }
 }

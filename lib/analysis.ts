@@ -99,13 +99,16 @@ function extractKeywords(text: string): string[] {
   return [...new Set(keywords)];
 }
 
-export async function generateFollowUpResponse(conversation: string): Promise<string> {
+export async function generateFollowUpResponse(
+  conversation: string,
+  conversationSetName?: string | null
+): Promise<string> {
   if (!conversation || conversation.trim().length === 0) {
     return "I understand. Can you tell me a bit more about how you're doing?";
   }
 
   try {
-    const prompt = formatFollowUpPrompt(conversation);
+    const prompt = formatFollowUpPrompt(conversation, conversationSetName);
 
     const response = await client.chat.completions.create({
       model: 'deepseek-chat',

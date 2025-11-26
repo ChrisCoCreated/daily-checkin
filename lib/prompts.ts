@@ -45,13 +45,39 @@ Guidelines:
 - Be warm, supportive, and conversational
 - Do NOT diagnose or give medical advice
 - Do NOT be overly clinical or formal
+{conversation_set_guidance}
 
 Conversation so far:
 {conversation}
 
 Generate a natural, empathetic follow-up question or response. Respond with ONLY the text to say, no additional explanation or formatting.`;
 
-export function formatFollowUpPrompt(conversation: string): string {
-  return FOLLOW_UP_GENERATION_PROMPT.replace('{conversation}', conversation);
+export function formatFollowUpPrompt(
+  conversation: string,
+  conversationSetName?: string | null
+): string {
+  let guidance = '';
+  
+  if (conversationSetName) {
+    switch (conversationSetName) {
+      case 'formal':
+        guidance = '\n- Use professional and formal language\n- Maintain a respectful, business-like tone';
+        break;
+      case 'casual':
+        guidance = '\n- Use friendly, casual language\n- Be relaxed and conversational';
+        break;
+      case 'personalized':
+        guidance = '\n- Use a warm, personal tone\n- Reference the person by name if appropriate';
+        break;
+      case 'current':
+      default:
+        guidance = '\n- Use a balanced, warm tone';
+        break;
+    }
+  }
+  
+  return FOLLOW_UP_GENERATION_PROMPT
+    .replace('{conversation_set_guidance}', guidance)
+    .replace('{conversation}', conversation);
 }
 
