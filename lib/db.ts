@@ -100,3 +100,87 @@ export async function getCheckinByCallId(callId: string): Promise<Checkin | null
   );
   return result.rows[0] as Checkin || null;
 }
+
+export interface Contact {
+  id: string;
+  name: string;
+  organisation: string | null;
+  talk_slowly: boolean;
+  number_to_call: string;
+  escalation_name: string | null;
+  escalation_number: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export async function getContacts(): Promise<Contact[]> {
+  const result = await pool.query(
+    'SELECT * FROM contacts ORDER BY name ASC'
+  );
+  return result.rows as Contact[];
+}
+
+export async function getContactById(id: string): Promise<Contact | null> {
+  const result = await pool.query(
+    'SELECT * FROM contacts WHERE id = $1 LIMIT 1',
+    [id]
+  );
+  return result.rows[0] as Contact || null;
+}
+
+export async function createContact(data: Omit<Contact, 'id' | 'created_at' | 'updated_at'>): Promise<Contact> {
+  const result = await pool.query(
+    `INSERT INTO contacts (
+      name, organisation, talk_slowly, number_to_call,
+      escalation_name, escalation_number
+    ) VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING *`,
+    [
+      data.name,
+      data.organisation,
+      data.talk_slowly,
+      data.number_to_call,
+      data.escalation_name,
+      data.escalation_number,
+    ]
+  );
+  return result.rows[0] as Contact;
+}
+
+export async function updateContact(
+  id: string,
+  updates: Partial<Omit<Contact, 'id' | 'created_at' | 'updated_at'>>
+): Promise<Contact> {
+  const keys = Object.keys(updates).filter(key => updates[key as keyof typeof updates] !== undefined);
+  if (keys.length === 0) {
+    const result = await pool.query('SELECT * FROM contacts WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      throw new Error(`Contact with id ${id} not found`);
+    }
+    return result.rows[0] as Contact;
+  }
+  
+  const setClause = keys
+    .map((key, i) => `${key} = $${i + 2}`)
+    .join(', ');
+  
+  const values = [id, ...keys.map(key => updates[key as keyof typeof updates])];
+  
+  const result = await pool.query(
+    `UPDATE contacts SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`,
+    values
+  );
+  
+  if (result.rows.length === 0) {
+    throw new Error(`Contact with id ${id} not found`);
+  }
+  
+  return result.rows[0] as Contact;
+}
+
+export async function deleteContact(id: string): Promise<void> {
+  const result = await pool.query('DELETE FROM contacts WHERE id = $1', [id]);
+  if (result.rowCount === 0) {
+    throw new Error(`Contact with id ${id} not found`);
+  }
+}

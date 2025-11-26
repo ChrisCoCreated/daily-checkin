@@ -19,3 +19,21 @@ CREATE INDEX IF NOT EXISTS idx_checkins_call_id ON checkins(call_id);
 CREATE INDEX IF NOT EXISTS idx_checkins_call_time ON checkins(call_time DESC);
 CREATE INDEX IF NOT EXISTS idx_checkins_needs_escalation ON checkins(needs_escalation) WHERE needs_escalation = TRUE;
 
+-- Contacts table for people we might want to call
+CREATE TABLE IF NOT EXISTS contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  organisation TEXT,
+  talk_slowly BOOLEAN DEFAULT FALSE,
+  number_to_call TEXT NOT NULL,
+  escalation_name TEXT,
+  escalation_number TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_contacts_organisation ON contacts(organisation);
+CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(name);
+
+

@@ -16,6 +16,18 @@ interface Checkin {
   responded: boolean;
 }
 
+interface Contact {
+  id: string;
+  name: string;
+  organisation: string | null;
+  talk_slowly: boolean;
+  number_to_call: string;
+  escalation_name: string | null;
+  escalation_number: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function AdminPage() {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +35,9 @@ export default function AdminPage() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const [callingContactId, setCallingContactId] = useState<string | null>(null);
 
   async function handleLogout() {
     try {
@@ -35,6 +50,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchCheckins();
+    fetchContacts();
   }, []);
 
   async function fetchCheckins() {
@@ -51,6 +67,54 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchContacts() {
+    try {
+      setContactsLoading(true);
+      const response = await fetch('/api/admin/contacts');
+      if (!response.ok) {
+        throw new Error('Failed to fetch contacts');
+      }
+      const data = await response.json();
+      setContacts(data.contacts || []);
+    } catch (err) {
+      console.error('Error fetching contacts:', err);
+    } finally {
+      setContactsLoading(false);
+    }
+  }
+
+  async function testCallContact(contactId: string) {
+    try {
+      setCallingContactId(contactId);
+      const response = await fetch(`/api/admin/contacts/${contactId}/test-call`, {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to start test call');
+      }
+      
+      setTestMessage({
+        type: 'success',
+        text: `Test call initiated! Call ID: ${data.callId?.substring(0, 12)}...`,
+      });
+      
+      // Refresh check-ins after a short delay to see the new entry
+      setTimeout(() => {
+        fetchCheckins();
+      }, 2000);
+    } catch (err) {
+      setTestMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to initiate test call',
+      });
+    } finally {
+      setCallingContactId(null);
     }
   }
 
@@ -320,6 +384,100 @@ export default function AdminPage() {
           >
             Refresh
           </button>
+        </div>
+
+        {/* Contacts Table */}
+        <div className="mt-12">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Contacts</h2>
+            <p className="mt-1 text-gray-600">Manage contacts for check-in calls</p>
+          </div>
+
+          {contactsLoading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading contacts...</p>
+            </div>
+          ) : contacts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">No contacts found</p>
+            </div>
+          ) : (
+            <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Organisation
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Number to Call
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Talk Slowly
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Escalation
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {contacts.map((contact) => (
+                      <tr key={contact.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {contact.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {contact.organisation || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {contact.number_to_call}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              contact.talk_slowly
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {contact.talk_slowly ? 'Yes' : 'No'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {contact.escalation_name ? (
+                            <div>
+                              <div className="font-medium">{contact.escalation_name}</div>
+                              {contact.escalation_number && (
+                                <div className="text-xs text-gray-500">{contact.escalation_number}</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => testCallContact(contact.id)}
+                            disabled={callingContactId === contact.id}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
+                          >
+                            {callingContactId === contact.id ? 'Calling...' : 'Test Call'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
