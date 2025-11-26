@@ -1,14 +1,16 @@
 import OpenAI from 'openai';
 import { formatAnalysisPrompt } from './prompts';
 
-const openaiApiKey = process.env.OPENAI_API_KEY;
+const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 
-if (!openaiApiKey) {
-  throw new Error('Missing OPENAI_API_KEY');
+if (!deepseekApiKey) {
+  throw new Error('Missing DEEPSEEK_API_KEY');
 }
 
-const openai = new OpenAI({
-  apiKey: openaiApiKey,
+// DeepSeek is OpenAI-compatible, use the same client with DeepSeek's base URL
+const client = new OpenAI({
+  apiKey: deepseekApiKey,
+  baseURL: 'https://api.deepseek.com',
 });
 
 export interface AnalysisResult {
@@ -33,8 +35,8 @@ export async function analyzeTranscript(transcript: string): Promise<AnalysisRes
   try {
     const prompt = formatAnalysisPrompt(transcript);
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const response = await client.chat.completions.create({
+      model: 'deepseek-chat',
       messages: [
         {
           role: 'system',
@@ -51,7 +53,7 @@ export async function analyzeTranscript(transcript: string): Promise<AnalysisRes
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('No response from OpenAI');
+      throw new Error('No response from DeepSeek');
     }
 
     const parsed = JSON.parse(content) as AnalysisResult;
@@ -65,7 +67,7 @@ export async function analyzeTranscript(transcript: string): Promise<AnalysisRes
       escalation_reason: parsed.needs_escalation ? (parsed.escalation_reason || 'Concern detected in conversation') : null,
     };
   } catch (error) {
-    console.error('Error analyzing transcript:', error);
+    console.error('Error analyzing transcript with DeepSeek:', error);
     
     // Fallback: basic keyword detection
     const lowerTranscript = transcript.toLowerCase();

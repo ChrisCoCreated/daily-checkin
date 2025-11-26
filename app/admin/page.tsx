@@ -20,6 +20,8 @@ export default function AdminPage() {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     fetchCheckins();
@@ -39,6 +41,40 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function sendTestCheckin() {
+    try {
+      setSendingTest(true);
+      setTestMessage(null);
+      
+      const response = await fetch('/api/call/start', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to start test check-in');
+      }
+      
+      setTestMessage({
+        type: 'success',
+        text: `Test check-in call initiated! Call ID: ${data.callId?.substring(0, 12)}...`,
+      });
+      
+      // Refresh check-ins after a short delay to see the new entry
+      setTimeout(() => {
+        fetchCheckins();
+      }, 2000);
+    } catch (err) {
+      setTestMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to send test check-in',
+      });
+    } finally {
+      setSendingTest(false);
     }
   }
 
@@ -71,14 +107,41 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Daily Check-In Logs</h1>
-          <p className="mt-2 text-gray-600">View all check-in call records and analysis</p>
+        <div className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Daily Check-In Logs</h1>
+            <p className="mt-2 text-gray-600">View all check-in call records and analysis</p>
+          </div>
+          <button
+            onClick={sendTestCheckin}
+            disabled={sendingTest}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          >
+            {sendingTest ? 'Sending...' : 'Send Test Check-In'}
+          </button>
         </div>
 
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-800">{error}</p>
+          </div>
+        )}
+
+        {testMessage && (
+          <div
+            className={`mb-4 p-4 border rounded-lg ${
+              testMessage.type === 'success'
+                ? 'bg-green-50 border-green-200'
+                : 'bg-red-50 border-red-200'
+            }`}
+          >
+            <p
+              className={
+                testMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+              }
+            >
+              {testMessage.text}
+            </p>
           </div>
         )}
 

@@ -16,6 +16,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate Twilio credentials are present
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioNumber = process.env.TWILIO_NUMBER;
+
+    if (!accountSid || !authToken || !twilioNumber) {
+      return NextResponse.json(
+        { 
+          error: 'Twilio credentials not configured',
+          details: {
+            hasAccountSid: !!accountSid,
+            hasAuthToken: !!authToken,
+            hasTwilioNumber: !!twilioNumber,
+          }
+        },
+        { status: 500 }
+      );
+    }
+
     const webhookUrl = `${baseUrl}/api/call/voice`;
     
     const callId = await initiateCall(personNumber, webhookUrl);

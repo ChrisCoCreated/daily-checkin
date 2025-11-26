@@ -6,7 +6,7 @@ An automated daily wellbeing check-in system that makes phone calls, conducts na
 
 - 🤖 **Automated Daily Calls**: Scheduled calls via Vercel Cron
 - 🎤 **Speech Recognition**: Natural conversation using Twilio Voice API
-- 🧠 **AI Analysis**: OpenAI-powered sentiment and risk assessment
+- 🧠 **AI Analysis**: DeepSeek-powered sentiment and risk assessment
 - 📊 **Admin Dashboard**: View all check-in logs and analytics
 - 🚨 **Smart Escalation**: Automatic SMS alerts when concerns are detected
 - 📝 **Comprehensive Logging**: All calls and analyses stored in Postgres
@@ -15,7 +15,7 @@ An automated daily wellbeing check-in system that makes phone calls, conducts na
 
 - **Next.js 14** (App Router, TypeScript)
 - **Twilio Voice API** (TTS + Speech Recognition)
-- **OpenAI GPT-4** (Wellbeing Analysis)
+- **DeepSeek** (Wellbeing Analysis)
 - **Neon Postgres** (Serverless Postgres)
 - **Vercel Cron** (Scheduled Tasks)
 - **Tailwind CSS** (Styling)
@@ -42,11 +42,11 @@ TWILIO_NUMBER=+1234567890  # Your Twilio phone number
 PERSON_NUMBER=+1234567890  # Person to call daily
 CONTACT_NUMBER=+1234567890  # Contact for escalations
 
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
+# DeepSeek
+DEEPSEEK_API_KEY=your_deepseek_api_key
 
 # Database (Neon Postgres)
-DATABASE_URL=postgresql://user:password@host/database
+CHECKIN_DATABASE_URL=postgresql://user:password@host/database
 
 # Vercel (for production)
 NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app
@@ -58,7 +58,7 @@ CRON_SECRET=your_random_secret_for_cron_auth
 Run the SQL schema in your Postgres database:
 
 ```bash
-psql $DATABASE_URL < schema.sql
+psql $CHECKIN_DATABASE_URL < schema.sql
 ```
 
 Or copy the contents of `schema.sql` and run it in your database console.
@@ -91,7 +91,7 @@ Visit `http://localhost:3000` to see the homepage and `/admin` for the dashboard
   page.tsx                  # Homepage
 /lib
   twilio.ts                 # Twilio client utilities
-  analysis.ts              # OpenAI analysis logic
+  analysis.ts              # DeepSeek analysis logic
   db.ts                   # Database operations
   prompts.ts               # LLM prompts
 ```
@@ -102,7 +102,7 @@ Visit `http://localhost:3000` to see the homepage and `/admin` for the dashboard
 2. **Call Initiated** → Twilio calls `PERSON_NUMBER`
 3. **Greeting** → `/api/call/voice` plays greeting and gathers response
 4. **Follow-ups** → `/api/call/gather` collects 2-3 responses
-5. **Analysis** → Transcript sent to OpenAI for sentiment/risk analysis
+5. **Analysis** → Transcript sent to DeepSeek for sentiment/risk analysis
 6. **Escalation** → If needed, SMS sent to `CONTACT_NUMBER`
 7. **Logging** → All data stored in database
 

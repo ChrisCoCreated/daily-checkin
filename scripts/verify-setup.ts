@@ -10,8 +10,8 @@ const requiredEnvVars = [
   'TWILIO_NUMBER',
   'PERSON_NUMBER',
   'CONTACT_NUMBER',
-  'OPENAI_API_KEY',
-  'DATABASE_URL',
+  'DEEPSEEK_API_KEY',
+  'CHECKIN_DATABASE_URL',
 ];
 
 const optionalEnvVars = [
@@ -48,12 +48,12 @@ optionalEnvVars.forEach((varName) => {
 
 // Check database configuration
 console.log('\nDatabase Configuration:');
-const hasDatabaseUrl = !!process.env.DATABASE_URL;
+const hasDatabaseUrl = !!process.env.CHECKIN_DATABASE_URL;
 
 if (hasDatabaseUrl) {
-  console.log('  ✅ DATABASE_URL: Set (Neon Postgres)');
+  console.log('  ✅ CHECKIN_DATABASE_URL: Set (Neon Postgres)');
 } else {
-  console.log('  ❌ DATABASE_URL: Missing (required for Neon Postgres)');
+  console.log('  ❌ CHECKIN_DATABASE_URL: Missing (required for Neon Postgres)');
   hasErrors = true;
 }
 
@@ -63,7 +63,7 @@ if (hasErrors) {
 } else {
   console.log('\n✅ Setup looks good!');
   console.log('\nNext steps:');
-  console.log('  1. Run the database schema: psql $DATABASE_URL < schema.sql');
+  console.log('  1. Run the database schema: psql $CHECKIN_DATABASE_URL < schema.sql');
   console.log('  2. Start the dev server: npm run dev');
   console.log('  3. Test a call: POST /api/call/start');
 }

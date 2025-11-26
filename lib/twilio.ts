@@ -1,34 +1,101 @@
 import twilio from 'twilio';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioNumber = process.env.TWILIO_NUMBER;
+let twilioClientInstance: twilio.Twilio | null = null;
 
 function getTwilioClient(): twilio.Twilio {
+  // Lazy load credentials to ensure env vars are available
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim();
+  const twilioNumber = process.env.TWILIO_NUMBER?.trim();
+
   if (!accountSid || !authToken || !twilioNumber) {
-    throw new Error('Missing Twilio credentials. Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_NUMBER');
+    const missing = [];
+    if (!accountSid) missing.push('TWILIO_ACCOUNT_SID');
+    if (!authToken) missing.push('TWILIO_AUTH_TOKEN');
+    if (!twilioNumber) missing.push('TWILIO_NUMBER');
+    throw new Error(`Missing Twilio credentials: ${missing.join(', ')}`);
   }
-  return twilio(accountSid, authToken);
+
+  // Validate Account SID format (should start with AC)
+  if (!accountSid.startsWith('AC')) {
+    throw new Error('Invalid TWILIO_ACCOUNT_SID format. Should start with "AC"');
+  }
+
+  // Create client if it doesn't exist or if credentials changed
+  if (!twilioClientInstance) {
+    try {
+      twilioClientInstance = twilio(accountSid, authToken);
+    } catch (error) {
+      console.error('Failed to create Twilio client:', error);
+      throw new Error(`Failed to initialize Twilio client: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  return twilioClientInstance;
 }
 
-export const twilioClient = getTwilioClient();
+// Export a getter that lazily initializes the client
+export const twilioClient = new Proxy({} as twilio.Twilio, {
+  get(_target, prop) {
+    const client = getTwilioClient();
+    const value = client[prop as keyof twilio.Twilio];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
 
 export async function initiateCall(to: string, webhookUrl: string): Promise<string> {
-  const call = await twilioClient.calls.create({
+  const client = getTwilioClient();
+  const twilioNumber = process.env.TWILIO_NUMBER?.trim();
+  
+  if (!twilioNumber) {
+    throw new Error('TWILIO_NUMBER is not configured');
+  }
+
+  // Debug logging (remove in production)
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  console.log('Initiating call with:', {
+    accountSidPrefix: accountSid?.substring(0, 10) + '...',
+    twilioNumber,
     to,
-    from: twilioNumber!,
-    url: webhookUrl,
-    method: 'POST',
-    record: false,
+    webhookUrl,
   });
 
-  return call.sid;
+  try {
+    const call = await client.calls.create({
+      to,
+      from: twilioNumber,
+      url: webhookUrl,
+      method: 'POST',
+      record: false,
+    });
+
+    return call.sid;
+  } catch (error: any) {
+    console.error('Twilio API Error:', {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+      accountSidPrefix: accountSid?.substring(0, 10) + '...',
+      hasAuthToken: !!process.env.TWILIO_AUTH_TOKEN,
+    });
+    throw error;
+  }
 }
 
 export async function sendSMS(to: string, message: string): Promise<void> {
-  await twilioClient.messages.create({
+  const client = getTwilioClient();
+  const twilioNumber = process.env.TWILIO_NUMBER;
+  
+  if (!twilioNumber) {
+    throw new Error('TWILIO_NUMBER is not configured');
+  }
+
+  await client.messages.create({
     to,
-    from: twilioNumber!,
+    from: twilioNumber,
     body: message,
   });
 }

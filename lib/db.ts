@@ -1,9 +1,9 @@
 import { Pool } from 'pg';
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.CHECKIN_DATABASE_URL;
 
 if (!databaseUrl) {
-  throw new Error('Missing DATABASE_URL. Please set your Neon Postgres connection string.');
+  throw new Error('Missing CHECKIN_DATABASE_URL. Please set your Neon Postgres connection string.');
 }
 
 // Neon Postgres connection pool
