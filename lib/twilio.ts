@@ -172,13 +172,33 @@ function escapeXml(text: string): string {
     .replace(/'/g, '&apos;');
 }
 
+const FALLBACK_RESPONSES = [
+  'Sorry, I did not catch that.',
+  'Could you please say that again?',
+  'I missed that. Can you repeat?',
+  'Apologies, what did you say?',
+];
+
+let fallbackQueue: string[] = [];
+
+function getNextFallback(): string {
+  if (fallbackQueue.length === 0) {
+    fallbackQueue = shuffleResponses(FALLBACK_RESPONSES);
+  }
+  return fallbackQueue.pop()!;
+}
+
+function shuffleResponses(responses: string[]): string[] {
+  const copy = [...responses];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 function sanitizeForSay(text: string): string {
-  const fallbackOptions = [
-    'Sorry, I did not catch that.',
-    'Could you please say that again?',
-    'I missed that. Can you repeat?',
-  ];
-  const fallback = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
+  const fallback = getNextFallback();
 
   if (!text) {
     return fallback;

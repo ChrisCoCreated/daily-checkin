@@ -112,7 +112,8 @@ export async function generateFollowUpResponse(conversation: string): Promise<st
       messages: [
         {
           role: 'system',
-          content: 'You are a compassionate wellbeing check-in assistant. Generate brief, natural responses for phone conversations.',
+          content:
+            'You are a compassionate wellbeing check-in assistant. Every response must begin with a brief validation that reflects what the caller just shared before gently continuing the conversation. Keep things natural and concise for a phone call.',
         },
         {
           role: 'user',
@@ -142,13 +143,82 @@ export async function generateFollowUpResponse(conversation: string): Promise<st
     
     // Fallback to context-aware static responses
     const lowerConversation = conversation.toLowerCase();
+    const reflection = buildReflectiveValidation(conversation);
     if (lowerConversation.includes('good') || lowerConversation.includes('fine') || lowerConversation.includes('okay')) {
-      return "That's good to hear. Is there anything specific on your mind today?";
+      return `${reflection} Is there anything specific on your mind today?`;
     } else if (lowerConversation.includes('bad') || lowerConversation.includes('not good') || lowerConversation.includes('struggling')) {
-      return "I'm sorry to hear that. Can you tell me a bit more about what's going on?";
+      return `${reflection} Can you tell me a bit more about what's going on?`;
     } else {
-      return "Thank you for sharing. Is there anything else you'd like to talk about?";
+      return `${reflection} Is there anything else you'd like to talk about?`;
     }
   }
+}
+
+function buildReflectiveValidation(conversation: string): string {
+  const statement = getLastStatement(conversation);
+  if (!statement) {
+    return 'I hear you.';
+  }
+
+  const normalized = normalizeForReflection(statement);
+  if (!normalized) {
+    return 'I hear you.';
+  }
+
+  const firstChar = normalized.charAt(0);
+  const lowered = `${firstChar.toLowerCase()}${normalized.slice(1)}`;
+  return `It sounds like ${lowered}.`;
+}
+
+function getLastStatement(conversation: string): string | null {
+  const trimmed = conversation.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const blocks = trimmed
+    .split(/\r?\n/)
+    .map(block => block.trim())
+    .filter(Boolean);
+
+  if (blocks.length === 0) {
+    return null;
+  }
+
+  const lastBlock = blocks[blocks.length - 1];
+  const sentences = lastBlock.match(/[^.?!]+[.?!]?/g);
+  const candidate = sentences && sentences.length > 0 ? sentences[sentences.length - 1].trim() : lastBlock;
+
+  const cleaned = candidate.replace(/["“”]+/g, '').trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function normalizeForReflection(statement: string): string {
+  let normalized = statement.replace(/^[^a-zA-Z0-9]+/, '').replace(/\s+/g, ' ').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  const replacements: Array<[RegExp, string]> = [
+    [/^i'm\b/i, "you're"],
+    [/^i am\b/i, 'you are'],
+    [/^i've\b/i, "you've"],
+    [/^i feel\b/i, 'you feel'],
+    [/^i was\b/i, 'you were'],
+    [/^i have\b/i, 'you have'],
+    [/^i had\b/i, 'you had'],
+    [/^i\b/i, 'you'],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    if (pattern.test(normalized)) {
+      normalized = normalized.replace(pattern, replacement);
+      break;
+    }
+  }
+
+  normalized = normalized.replace(/[.!?]+$/, '').trim();
+  return normalized;
 }
 
