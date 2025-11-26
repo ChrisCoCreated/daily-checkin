@@ -24,9 +24,14 @@ const pool = new Pool({
 });
 
 async function runMigration() {
+  // TypeScript assertion: databaseUrl is guaranteed to be defined here
+  // because we exit early if it's not set
+  const dbUrl = databaseUrl!;
+  
   try {
     console.log('🔄 Running contacts table migration on production...\n');
-    console.log('Database:', databaseUrl.split('@')[1]?.split('/')[0] || 'unknown');
+    const dbInfo = dbUrl.split('@')[1]?.split('/')[0] || 'unknown';
+    console.log('Database:', dbInfo);
     
     // Check if table already exists
     const checkResult = await pool.query(`
