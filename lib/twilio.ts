@@ -111,16 +111,14 @@ export function generateTwiML(xml: string): string {
 // Supports both plain text (default) and SSML payloads
 export function say(
   text: string,
-  voice = 'Polly.Emma-Neural',
-  isSSML = false
+  voice = 'Polly.Emma-Neural'
 ): string {
-  // Always use conversational SSML as standard
   return `
     <Say voice="${voice}" ssml="true">
       <speak>
-        <amazon:domain name="conversational">
+        <prosody rate="92%">
           ${text}
-        </amazon:domain>
+        </prosody>
       </speak>
     </Say>
   `;
@@ -133,9 +131,9 @@ export function sayConversational(
   return `
     <Say voice="${voice}" ssml="true">
       <speak>
-        <amazon:domain name="conversational">
+        <prosody rate="92%">
           ${text}
-        </amazon:domain>
+        </prosody>
       </speak>
     </Say>
   `;
@@ -155,11 +153,9 @@ export function saySlow(
   return `
     <Say voice="${voice}" ssml="true">
       <speak>
-        <amazon:domain name="conversational">
-          <prosody rate="88%">
-            ${text}
-          </prosody>
-        </amazon:domain>
+        <prosody rate="85%">
+          ${text}
+        </prosody>
       </speak>
     </Say>
   `;
@@ -173,9 +169,9 @@ export function sayRandomised(
   return `
     <Say voice="${voice}" ssml="true">
       <speak>
-        <amazon:domain name="conversational">
+        <prosody rate="92%">
           ${chosen}
-        </amazon:domain>
+        </prosody>
       </speak>
     </Say>
   `;
