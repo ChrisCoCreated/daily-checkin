@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { formatAnalysisPrompt } from './prompts';
+import { formatAnalysisPrompt, formatFollowUpPrompt } from './prompts';
 
 const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 
@@ -97,5 +97,58 @@ function extractKeywords(text: string): string[] {
     .slice(0, 10);
   
   return [...new Set(keywords)];
+}
+
+export async function generateFollowUpResponse(conversation: string): Promise<string> {
+  if (!conversation || conversation.trim().length === 0) {
+    return "I understand. Can you tell me a bit more about how you're doing?";
+  }
+
+  try {
+    const prompt = formatFollowUpPrompt(conversation);
+
+    const response = await client.chat.completions.create({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a compassionate wellbeing check-in assistant. Generate brief, natural responses for phone conversations.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 100,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error('No response from DeepSeek');
+    }
+
+    // Clean up the response - remove quotes if present, ensure it ends properly
+    let cleaned = content.replace(/^["']|["']$/g, '').trim();
+    
+    // Ensure it ends with appropriate punctuation
+    if (!cleaned.match(/[.!?]$/)) {
+      cleaned += '.';
+    }
+
+    return cleaned;
+  } catch (error) {
+    console.error('Error generating follow-up response with AI:', error);
+    
+    // Fallback to context-aware static responses
+    const lowerConversation = conversation.toLowerCase();
+    if (lowerConversation.includes('good') || lowerConversation.includes('fine') || lowerConversation.includes('okay')) {
+      return "That's good to hear. Is there anything specific on your mind today?";
+    } else if (lowerConversation.includes('bad') || lowerConversation.includes('not good') || lowerConversation.includes('struggling')) {
+      return "I'm sorry to hear that. Can you tell me a bit more about what's going on?";
+    } else {
+      return "Thank you for sharing. Is there anything else you'd like to talk about?";
+    }
+  }
 }
 

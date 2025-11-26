@@ -104,7 +104,7 @@ export function generateTwiML(xml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><Response>${xml}</Response>`;
 }
 
-export function say(text: string, voice = 'Polly.Amy'): string {
+export function say(text: string, voice = 'Polly.Emma-Neural'): string {
   return `<Say voice="${voice}">${escapeXml(text)}</Say>`;
 }
 

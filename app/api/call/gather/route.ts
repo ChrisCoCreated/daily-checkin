@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTwiML, say, hangup, gather } from '@/lib/twilio';
-import { FOLLOW_UP_PROMPTS, CLOSING_PROMPT } from '@/lib/prompts';
+import { CLOSING_PROMPT } from '@/lib/prompts';
 import { getCheckinByCallId, updateCheckin } from '@/lib/db';
-import { analyzeTranscript } from '@/lib/analysis';
+import { analyzeTranscript, generateFollowUpResponse } from '@/lib/analysis';
 import { buildUrl } from '@/lib/url';
 
 // Ensure this route is publicly accessible for Twilio webhooks
@@ -60,8 +60,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Ask follow-up questions (max 2 follow-ups)
-    if (questionIndex < FOLLOW_UP_PROMPTS.length) {
-      const nextQuestion = FOLLOW_UP_PROMPTS[questionIndex];
+    // Use AI to generate adaptive responses based on conversation so far
+    if (questionIndex < 2) {
+      const nextQuestion = await generateFollowUpResponse(currentTranscript);
       const nextGatherUrl = buildUrl('/api/call/gather', {
         callSid,
         questionIndex: String(questionIndex + 1),

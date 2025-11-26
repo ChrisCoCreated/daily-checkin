@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
   const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null);
 
   async function handleLogout() {
     try {
@@ -255,11 +256,25 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
-                        <p className="truncate">
-                          {checkin.transcript || (
-                            <span className="text-gray-400 italic">No transcript</span>
-                          )}
-                        </p>
+                        {checkin.transcript ? (
+                          <div>
+                            <button
+                              onClick={() => setExpandedTranscript(
+                                expandedTranscript === checkin.id ? null : checkin.id
+                              )}
+                              className="text-blue-600 hover:text-blue-800 underline text-left"
+                            >
+                              {expandedTranscript === checkin.id ? 'Hide' : 'View'} Transcript
+                            </button>
+                            {expandedTranscript === checkin.id && (
+                              <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200 max-h-64 overflow-y-auto">
+                                <p className="whitespace-pre-wrap text-sm">{checkin.transcript}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">No transcript</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {checkin.keywords && checkin.keywords.length > 0 ? (
