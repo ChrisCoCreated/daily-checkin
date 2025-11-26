@@ -27,7 +27,11 @@ function getTwilioClient(): twilio.Twilio {
       twilioClientInstance = twilio(accountSid, authToken);
     } catch (error) {
       console.error('Failed to create Twilio client:', error);
-      throw new Error(`Failed to initialize Twilio client: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to initialize Twilio client: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
     }
   }
 
@@ -49,7 +53,7 @@ export const twilioClient = new Proxy({} as twilio.Twilio, {
 export async function initiateCall(to: string, webhookUrl: string): Promise<string> {
   const client = getTwilioClient();
   const twilioNumber = process.env.TWILIO_NUMBER?.trim();
-  
+
   if (!twilioNumber) {
     throw new Error('TWILIO_NUMBER is not configured');
   }
@@ -88,7 +92,7 @@ export async function initiateCall(to: string, webhookUrl: string): Promise<stri
 export async function sendSMS(to: string, message: string): Promise<void> {
   const client = getTwilioClient();
   const twilioNumber = process.env.TWILIO_NUMBER;
-  
+
   if (!twilioNumber) {
     throw new Error('TWILIO_NUMBER is not configured');
   }
@@ -104,9 +108,77 @@ export function generateTwiML(xml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><Response>${xml}</Response>`;
 }
 
-export function say(text: string, voice = 'Polly.Emma-Neural'): string {
-  // Keep payload to plain text to avoid Twilio "Invalid text" SSML errors
+// Supports both plain text (default) and SSML payloads
+export function say(
+  text: string,
+  voice = 'Polly.Emma-Neural',
+  isSSML = false
+): string {
+  // Always use conversational SSML as standard
+  return `
+    <Say voice="${voice}" ssml="true">
+      <speak>
+        <amazon:domain name="conversational">
+          ${text}
+        </amazon:domain>
+      </speak>
+    </Say>
+  `;
+}
+
+export function sayConversational(
+  text: string,
+  voice = 'Polly.Emma-Neural'
+): string {
+  return `
+    <Say voice="${voice}" ssml="true">
+      <speak>
+        <amazon:domain name="conversational">
+          ${text}
+        </amazon:domain>
+      </speak>
+    </Say>
+  `;
+}
+
+export function sayPlain(
+  text: string,
+  voice = 'Polly.Emma-Neural'
+): string {
   return `<Say voice="${voice}">${escapeXml(text)}</Say>`;
+}
+
+export function saySlow(
+  text: string,
+  voice = 'Polly.Emma-Neural'
+): string {
+  return `
+    <Say voice="${voice}" ssml="true">
+      <speak>
+        <amazon:domain name="conversational">
+          <prosody rate="88%">
+            ${text}
+          </prosody>
+        </amazon:domain>
+      </speak>
+    </Say>
+  `;
+}
+
+export function sayRandomised(
+  lines: string[],
+  voice = 'Polly.Emma-Neural'
+): string {
+  const chosen = lines[Math.floor(Math.random() * lines.length)];
+  return `
+    <Say voice="${voice}" ssml="true">
+      <speak>
+        <amazon:domain name="conversational">
+          ${chosen}
+        </amazon:domain>
+      </speak>
+    </Say>
+  `;
 }
 
 export function gather(
@@ -118,8 +190,8 @@ export function gather(
 ): string {
   const numDigitsAttr = numDigits ? ` numDigits="${numDigits}"` : '';
   const escapedAction = escapeXml(action);
-  const partialCallbackAttr = partialResultCallback 
-    ? ` partialResultCallback="${escapeXml(partialResultCallback)}"` 
+  const partialCallbackAttr = partialResultCallback
+    ? ` partialResultCallback="${escapeXml(partialResultCallback)}"`
     : '';
   return `<Gather action="${escapedAction}" method="POST" timeout="${timeout}" speechTimeout="${speechTimeout}" input="speech"${numDigitsAttr}${partialCallbackAttr}></Gather>`;
 }
@@ -140,4 +212,3 @@ function escapeXml(text: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 }
-
