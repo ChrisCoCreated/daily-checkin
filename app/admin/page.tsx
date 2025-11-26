@@ -23,6 +23,15 @@ export default function AdminPage() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  async function handleLogout() {
+    try {
+      await fetch('/api/admin/auth/logout', { method: 'POST' });
+      window.location.href = '/admin/login';
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  }
+
   useEffect(() => {
     fetchCheckins();
   }, []);
@@ -112,13 +121,21 @@ export default function AdminPage() {
             <h1 className="text-3xl font-bold text-gray-900">Daily Check-In Logs</h1>
             <p className="mt-2 text-gray-600">View all check-in call records and analysis</p>
           </div>
-          <button
-            onClick={sendTestCheckin}
-            disabled={sendingTest}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-          >
-            {sendingTest ? 'Sending...' : 'Send Test Check-In'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={sendTestCheckin}
+              disabled={sendingTest}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            >
+              {sendingTest ? 'Sending...' : 'Send Test Check-In'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {error && (

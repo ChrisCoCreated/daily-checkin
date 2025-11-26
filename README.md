@@ -7,7 +7,8 @@ An automated daily wellbeing check-in system that makes phone calls, conducts na
 - 🤖 **Automated Daily Calls**: Scheduled calls via Vercel Cron
 - 🎤 **Speech Recognition**: Natural conversation using Twilio Voice API
 - 🧠 **AI Analysis**: DeepSeek-powered sentiment and risk assessment
-- 📊 **Admin Dashboard**: View all check-in logs and analytics
+- 📊 **Admin Dashboard**: View all check-in logs and analytics (password protected)
+- 🔐 **Simple Authentication**: Minimal password-based auth for admin access
 - 🚨 **Smart Escalation**: Automatic SMS alerts when concerns are detected
 - 📝 **Comprehensive Logging**: All calls and analyses stored in Postgres
 
@@ -51,6 +52,10 @@ CHECKIN_DATABASE_URL=postgresql://user:password@host/database
 # Vercel (for production)
 NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app
 CRON_SECRET=your_random_secret_for_cron_auth
+
+# Admin Authentication
+ADMIN_PASSWORD=your_secure_admin_password
+ADMIN_SESSION_SECRET=your_random_session_secret
 ```
 
 ### 3. Database Setup
@@ -69,7 +74,7 @@ Or copy the contents of `schema.sql` and run it in your database console.
 npm run dev
 ```
 
-Visit `http://localhost:3000` to see the homepage and `/admin` for the dashboard.
+Visit `http://localhost:3000` to see the homepage and `/admin` for the dashboard (login required).
 
 ## Project Structure
 

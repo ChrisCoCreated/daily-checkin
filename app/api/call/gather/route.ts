@@ -4,9 +4,24 @@ import { FOLLOW_UP_PROMPTS, CLOSING_PROMPT } from '@/lib/prompts';
 import { getCheckinByCallId, updateCheckin } from '@/lib/db';
 import { analyzeTranscript } from '@/lib/analysis';
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}` 
-  : 'http://localhost:3000';
+// Ensure this route is publicly accessible for Twilio webhooks
+export const dynamic = 'force-dynamic';
+
+// Get base URL - prefer NEXT_PUBLIC_BASE_URL, fallback to VERCEL_URL, then localhost
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    const url = process.env.NEXT_PUBLIC_BASE_URL.trim();
+    return url.startsWith('http://') || url.startsWith('https://') 
+      ? url 
+      : `https://${url}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return 'http://localhost:3000';
+}
+
+const baseUrl = getBaseUrl();
 
 interface GatherState {
   transcript: string[];
@@ -103,7 +118,7 @@ async function processTranscript(checkinId: string, transcript: string) {
 
     // Trigger escalation if needed
     if (analysis.needs_escalation) {
-      const escalationUrl = `${process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/alert?checkinId=${checkinId}`;
+      const escalationUrl = `${getBaseUrl()}/api/alert?checkinId=${checkinId}`;
       // Fire and forget - don't wait for response
       fetch(escalationUrl).catch(err => console.error('Escalation error:', err));
     }

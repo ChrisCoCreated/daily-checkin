@@ -3,9 +3,22 @@ import { initiateCall } from '@/lib/twilio';
 import { createCheckin } from '@/lib/db';
 
 const personNumber = process.env.PERSON_NUMBER;
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}` 
-  : 'http://localhost:3000';
+
+// Get base URL - prefer NEXT_PUBLIC_BASE_URL, fallback to VERCEL_URL, then localhost
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    const url = process.env.NEXT_PUBLIC_BASE_URL.trim();
+    return url.startsWith('http://') || url.startsWith('https://') 
+      ? url 
+      : `https://${url}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return 'http://localhost:3000';
+}
+
+const baseUrl = getBaseUrl();
 
 export async function GET(request: NextRequest) {
   // Verify this is coming from Vercel Cron
