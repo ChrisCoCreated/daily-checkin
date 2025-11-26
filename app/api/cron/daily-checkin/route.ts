@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initiateCall } from '@/lib/twilio';
 import { createCheckin } from '@/lib/db';
+import { buildUrl } from '@/lib/url';
 
 const personNumber = process.env.PERSON_NUMBER;
-
-// Get base URL - prefer NEXT_PUBLIC_BASE_URL, fallback to VERCEL_URL, then localhost
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    const url = process.env.NEXT_PUBLIC_BASE_URL.trim();
-    return url.startsWith('http://') || url.startsWith('https://') 
-      ? url 
-      : `https://${url}`;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return 'http://localhost:3000';
-}
-
-const baseUrl = getBaseUrl();
 
 export async function GET(request: NextRequest) {
   // Verify this is coming from Vercel Cron
@@ -35,7 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const webhookUrl = `${baseUrl}/api/call/voice`;
+    const webhookUrl = buildUrl('/api/call/voice');
     
     const callId = await initiateCall(personNumber, webhookUrl);
 

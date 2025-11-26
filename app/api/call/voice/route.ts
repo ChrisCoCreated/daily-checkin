@@ -2,25 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateTwiML, say, gather, hangup } from '@/lib/twilio';
 import { GREETING_PROMPT } from '@/lib/prompts';
 import { getCheckinByCallId, updateCheckin } from '@/lib/db';
+import { buildUrl } from '@/lib/url';
 
 // Ensure this route is publicly accessible for Twilio webhooks
 export const dynamic = 'force-dynamic';
-
-// Get base URL - prefer NEXT_PUBLIC_BASE_URL, fallback to VERCEL_URL, then localhost
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    const url = process.env.NEXT_PUBLIC_BASE_URL.trim();
-    return url.startsWith('http://') || url.startsWith('https://') 
-      ? url 
-      : `https://${url}`;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return 'http://localhost:3000';
-}
-
-const baseUrl = getBaseUrl();
 
 // Allow GET for health checks
 export async function GET() {
@@ -88,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Greeting and gather response
-    const gatherUrl = `${baseUrl}/api/call/gather?callSid=${callSid}`;
+    const gatherUrl = buildUrl('/api/call/gather', { callSid });
     
     const twiml = generateTwiML(
       say(GREETING_PROMPT) +

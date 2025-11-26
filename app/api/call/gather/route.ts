@@ -3,25 +3,10 @@ import { generateTwiML, say, hangup, gather } from '@/lib/twilio';
 import { FOLLOW_UP_PROMPTS, CLOSING_PROMPT } from '@/lib/prompts';
 import { getCheckinByCallId, updateCheckin } from '@/lib/db';
 import { analyzeTranscript } from '@/lib/analysis';
+import { buildUrl } from '@/lib/url';
 
 // Ensure this route is publicly accessible for Twilio webhooks
 export const dynamic = 'force-dynamic';
-
-// Get base URL - prefer NEXT_PUBLIC_BASE_URL, fallback to VERCEL_URL, then localhost
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    const url = process.env.NEXT_PUBLIC_BASE_URL.trim();
-    return url.startsWith('http://') || url.startsWith('https://') 
-      ? url 
-      : `https://${url}`;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return 'http://localhost:3000';
-}
-
-const baseUrl = getBaseUrl();
 
 interface GatherState {
   transcript: string[];
@@ -77,7 +62,10 @@ export async function POST(request: NextRequest) {
     // Ask follow-up questions (max 2 follow-ups)
     if (questionIndex < FOLLOW_UP_PROMPTS.length) {
       const nextQuestion = FOLLOW_UP_PROMPTS[questionIndex];
-      const nextGatherUrl = `${baseUrl}/api/call/gather?callSid=${callSid}&questionIndex=${questionIndex + 1}`;
+      const nextGatherUrl = buildUrl('/api/call/gather', {
+        callSid,
+        questionIndex: String(questionIndex + 1),
+      });
       
       const twiml = generateTwiML(
         say(nextQuestion) +
@@ -118,7 +106,7 @@ async function processTranscript(checkinId: string, transcript: string) {
 
     // Trigger escalation if needed
     if (analysis.needs_escalation) {
-      const escalationUrl = `${getBaseUrl()}/api/alert?checkinId=${checkinId}`;
+      const escalationUrl = buildUrl('/api/alert', { checkinId });
       // Fire and forget - don't wait for response
       fetch(escalationUrl).catch(err => console.error('Escalation error:', err));
     }

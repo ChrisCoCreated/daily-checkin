@@ -1,25 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initiateCall } from '@/lib/twilio';
 import { createCheckin } from '@/lib/db';
+import { buildUrl } from '@/lib/url';
 
 const personNumber = process.env.PERSON_NUMBER;
-
-// Get base URL - prefer NEXT_PUBLIC_BASE_URL, fallback to VERCEL_URL, then localhost
-function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    // If it already has protocol, use as-is, otherwise add https://
-    const url = process.env.NEXT_PUBLIC_BASE_URL.trim();
-    return url.startsWith('http://') || url.startsWith('https://') 
-      ? url 
-      : `https://${url}`;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return 'http://localhost:3000';
-}
-
-const baseUrl = getBaseUrl();
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const webhookUrl = `${baseUrl}/api/call/voice`;
+    const webhookUrl = buildUrl('/api/call/voice');
     
     const callId = await initiateCall(personNumber, webhookUrl);
 
