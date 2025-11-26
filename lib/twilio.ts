@@ -108,73 +108,36 @@ export function generateTwiML(xml: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><Response>${xml}</Response>`;
 }
 
-// Supports both plain text (default) and SSML payloads
-export function say(
-  text: string,
-  voice = 'Polly.Emma-Neural'
-): string {
-  return `
-    <Say voice="${voice}" ssml="true">
-      <speak>
-        <prosody rate="92%">
-          ${text}
-        </prosody>
-      </speak>
-    </Say>
-  `;
+// Plain `<Say>` helper with sanitization to avoid Twilio XML errors
+export function say(text: string, voice = 'Polly.Emma-Neural'): string {
+  const sanitized = sanitizeForSay(text);
+  return `<Say voice="${voice}">${escapeXml(sanitized)}</Say>`;
 }
 
-export function sayConversational(
-  text: string,
-  voice = 'Polly.Emma-Neural'
-): string {
-  return `
-    <Say voice="${voice}" ssml="true">
-      <speak>
-        <prosody rate="92%">
-          ${text}
-        </prosody>
-      </speak>
-    </Say>
-  `;
+export function sayConversational(text: string, voice = 'Polly.Emma-Neural'): string {
+  return say(text, voice);
 }
 
-export function sayPlain(
-  text: string,
-  voice = 'Polly.Emma-Neural'
-): string {
-  return `<Say voice="${voice}">${escapeXml(text)}</Say>`;
+export function sayPlain(text: string, voice = 'Polly.Emma-Neural'): string {
+  return say(text, voice);
 }
 
-export function saySlow(
-  text: string,
-  voice = 'Polly.Emma-Neural'
-): string {
+export function saySlow(text: string, voice = 'Polly.Emma-Neural'): string {
+  const sanitized = sanitizeForSay(text);
   return `
     <Say voice="${voice}" ssml="true">
       <speak>
         <prosody rate="85%">
-          ${text}
+          ${escapeXml(sanitized)}
         </prosody>
       </speak>
     </Say>
   `;
 }
 
-export function sayRandomised(
-  lines: string[],
-  voice = 'Polly.Emma-Neural'
-): string {
+export function sayRandomised(lines: string[], voice = 'Polly.Emma-Neural'): string {
   const chosen = lines[Math.floor(Math.random() * lines.length)];
-  return `
-    <Say voice="${voice}" ssml="true">
-      <speak>
-        <prosody rate="92%">
-          ${chosen}
-        </prosody>
-      </speak>
-    </Say>
-  `;
+  return say(chosen, voice);
 }
 
 export function gather(
@@ -207,4 +170,19 @@ function escapeXml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+function sanitizeForSay(text: string): string {
+  if (!text) {
+    return 'Sorry, I did not catch that.';
+  }
+
+  const cleaned = text
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ' ')
+    .replace(/[\uD800-\uDFFF]/g, ' ')
+    .replace(/[\uFFFE\uFFFF]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return cleaned.length > 0 ? cleaned : 'Sorry, I did not catch that.';
 }
