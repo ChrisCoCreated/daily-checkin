@@ -105,7 +105,8 @@ export function generateTwiML(xml: string): string {
 }
 
 export function say(text: string, voice = 'Polly.Emma-Neural'): string {
-  return `<Say voice="${voice}"><amazon:domain name="conversational">${escapeXml(text)}</amazon:domain></Say>`;
+  // Keep payload to plain text to avoid Twilio "Invalid text" SSML errors
+  return `<Say voice="${voice}">${escapeXml(text)}</Say>`;
 }
 
 export function gather(
