@@ -196,10 +196,10 @@ export default function AdminPage() {
                       Escalation
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Transcript
+                      Keywords
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Keywords
+                      Transcript
                     </th>
                   </tr>
                 </thead>
@@ -239,41 +239,20 @@ export default function AdminPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-6 py-4 text-sm w-48 align-top">
                         {checkin.needs_escalation ? (
-                          <div>
+                          <div className="space-y-1">
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                               Yes
                             </span>
                             {checkin.escalation_reason && (
-                              <p className="mt-1 text-xs text-gray-600">
+                              <p className="text-xs text-gray-600 break-words whitespace-normal">
                                 {checkin.escalation_reason}
                               </p>
                             )}
                           </div>
                         ) : (
                           <span className="text-gray-400">No</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
-                        {checkin.transcript ? (
-                          <div>
-                            <button
-                              onClick={() => setExpandedTranscript(
-                                expandedTranscript === checkin.id ? null : checkin.id
-                              )}
-                              className="text-blue-600 hover:text-blue-800 underline text-left"
-                            >
-                              {expandedTranscript === checkin.id ? 'Hide' : 'View'} Transcript
-                            </button>
-                            {expandedTranscript === checkin.id && (
-                              <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200 max-h-64 overflow-y-auto">
-                                <p className="whitespace-pre-wrap text-sm">{checkin.transcript}</p>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 italic">No transcript</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">
@@ -297,7 +276,34 @@ export default function AdminPage() {
                           <span className="text-gray-400">None</span>
                         )}
                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {checkin.transcript ? (
+                          <button
+                            onClick={() =>
+                              setExpandedTranscript(
+                                expandedTranscript === checkin.id ? null : checkin.id
+                              )
+                            }
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            {expandedTranscript === checkin.id ? 'Hide' : 'View'} Transcript
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 italic">No transcript</span>
+                        )}
+                      </td>
                     </tr>
+                    {checkin.transcript && expandedTranscript === checkin.id && (
+                      <tr>
+                        <td colSpan={8} className="bg-gray-50 px-6 pb-6 pt-0">
+                          <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-inner">
+                            <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                              {checkin.transcript}
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   ))}
                 </tbody>
               </table>
