@@ -16,6 +16,15 @@ interface Checkin {
   responded: boolean;
 }
 
+interface ConversationSet {
+  id: string;
+  name: string;
+  description: string | null;
+  greeting_template: string;
+  follow_up_template: string | null;
+  closing_template: string;
+}
+
 export default function LogsPage() {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +32,34 @@ export default function LogsPage() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [expandedTranscript, setExpandedTranscript] = useState<string | null>(null);
+  const [conversationSets, setConversationSets] = useState<ConversationSet[]>([]);
+  const [selectedConversationSet, setSelectedConversationSet] = useState<string>('current');
 
   useEffect(() => {
     fetchCheckins();
+    fetchConversationSets();
   }, []);
+
+  async function fetchConversationSets() {
+    try {
+      const response = await fetch('/api/admin/conversation-sets');
+      if (response.ok) {
+        const data = await response.json();
+        setConversationSets(data.conversationSets || []);
+        // Set default to "current" if it exists, otherwise first one
+        if (data.conversationSets?.length > 0) {
+          const current = data.conversationSets.find((cs: ConversationSet) => cs.name === 'current');
+          if (current) {
+            setSelectedConversationSet('current');
+          } else {
+            setSelectedConversationSet(data.conversationSets[0].name);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching conversation sets:', err);
+    }
+  }
 
   async function fetchCheckins() {
     try {
@@ -52,6 +85,12 @@ export default function LogsPage() {
       
       const response = await fetch('/api/call/start', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_set_name: selectedConversationSet,
+        }),
       });
       
       const data = await response.json();
@@ -112,7 +151,24 @@ export default function LogsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Daily Check-In Logs</h1>
             <p className="mt-2 text-gray-600">View all check-in call records and analysis</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="conversation-set" className="text-sm font-medium text-gray-700">
+                Call Type:
+              </label>
+              <select
+                id="conversation-set"
+                value={selectedConversationSet}
+                onChange={(e) => setSelectedConversationSet(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+              >
+                {conversationSets.map((cs) => (
+                  <option key={cs.id} value={cs.name}>
+                    {cs.name} {cs.description ? `- ${cs.description}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={sendTestCheckin}
               disabled={sendingTest}
