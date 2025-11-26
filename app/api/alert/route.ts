@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendSMS } from '@/lib/twilio';
 import { getCheckins } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const contactNumber = process.env.CONTACT_NUMBER;
 
 export async function GET(request: NextRequest) {
