@@ -14,6 +14,8 @@ interface GatherState {
 }
 
 const MAX_CHUNKS = 5; // Maximum number of Gather chunks per response (5 minutes total)
+const LONG_RESPONSE_WORD_THRESHOLD = 90; // Roughly ~60 seconds of speech
+const LONG_RESPONSE_CHAR_THRESHOLD = 450;
 
 export async function POST(request: NextRequest) {
   try {
@@ -106,10 +108,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Normalize speech result for downstream processing
+    const normalizedSpeech = speechResult.trim();
+    const wordCount = normalizedSpeech ? normalizedSpeech.split(/\s+/).length : 0;
+    const charCount = normalizedSpeech.length;
+    const likelyTimeout = chunkIndex === 0 && (
+      wordCount >= LONG_RESPONSE_WORD_THRESHOLD ||
+      charCount >= LONG_RESPONSE_CHAR_THRESHOLD
+    );
+
     // Accumulate transcript chunk
     const currentTranscript = checkin.transcript 
-      ? `${checkin.transcript} ${speechResult}`.trim()
-      : speechResult;
+      ? `${checkin.transcript} ${normalizedSpeech}`.trim()
+      : normalizedSpeech;
 
     await updateCheckin(checkin.id, {
       transcript: currentTranscript,
@@ -118,10 +129,12 @@ export async function POST(request: NextRequest) {
 
     // Determine if we should chain another Gather
     // Strategy:
-    // - chunkIndex=0: Do a quick continuation check (3 seconds) to see if user is still speaking
-    //   If they are, chain to chunkIndex=1. If not, proceed immediately (no pause)
+    // - chunkIndex=0: Only chain if the response was long enough that we likely hit the 60s cap
     // - chunkIndex>0: We're already chaining, continue if below max
-    const shouldChain = chunkIndex < MAX_CHUNKS - 1;
+    const shouldChain = (
+      (chunkIndex > 0 && chunkIndex < MAX_CHUNKS - 1) ||
+      (likelyTimeout && chunkIndex < MAX_CHUNKS - 1)
+    );
     
     if (shouldChain) {
       const nextChunkIndex = chunkIndex + 1;
@@ -137,9 +150,8 @@ export async function POST(request: NextRequest) {
         partial: 'true',
       });
       
-      // For chunkIndex=0: Use short timeout (3 seconds) to quickly detect if user is done
-      // For chunkIndex>0: Use full 60 seconds since we know user is still speaking
-      const timeout = chunkIndex === 0 ? 3 : 60;
+      // For initial continuation, use short timeout to avoid noticeable pauses.
+      const timeout = chunkIndex === 0 ? 2 : 60;
       
       // Continue listening without asking a new question
       // If user is done, next Gather will return empty quickly (3 sec for first check, immediate for others)
