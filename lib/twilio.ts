@@ -173,8 +173,15 @@ function escapeXml(text: string): string {
 }
 
 function sanitizeForSay(text: string): string {
+  const fallbackOptions = [
+    'Sorry, I did not catch that.',
+    'Could you please say that again?',
+    'I missed that. Can you repeat?',
+  ];
+  const fallback = fallbackOptions[Math.floor(Math.random() * fallbackOptions.length)];
+
   if (!text) {
-    return 'Sorry, I did not catch that.';
+    return fallback;
   }
 
   const cleaned = text
@@ -184,5 +191,5 @@ function sanitizeForSay(text: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return cleaned.length > 0 ? cleaned : 'Sorry, I did not catch that.';
+  return cleaned.length > 0 ? cleaned : fallback;
 }

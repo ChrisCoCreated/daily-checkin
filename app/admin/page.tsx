@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 
 interface Checkin {
@@ -205,105 +205,107 @@ export default function AdminPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {checkins.map((checkin) => (
-                    <tr key={checkin.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {format(new Date(checkin.call_time), 'MMM d, yyyy h:mm a')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
-                        {checkin.call_id.substring(0, 12)}...
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            checkin.responded
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {checkin.responded ? 'Yes' : 'No'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={getSentimentColor(checkin.sentiment)}>
-                          {checkin.sentiment || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {checkin.risk_level && (
+                    <Fragment key={checkin.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {format(new Date(checkin.call_time), 'MMM d, yyyy h:mm a')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                          {checkin.call_id.substring(0, 12)}...
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRiskColor(
-                              checkin.risk_level
-                            )}`}
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              checkin.responded
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
                           >
-                            {checkin.risk_level}
+                            {checkin.responded ? 'Yes' : 'No'}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm w-48 align-top">
-                        {checkin.needs_escalation ? (
-                          <div className="space-y-1">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                              Yes
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={getSentimentColor(checkin.sentiment)}>
+                            {checkin.sentiment || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {checkin.risk_level && (
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRiskColor(
+                                checkin.risk_level
+                              )}`}
+                            >
+                              {checkin.risk_level}
                             </span>
-                            {checkin.escalation_reason && (
-                              <p className="text-xs text-gray-600 break-words whitespace-normal">
-                                {checkin.escalation_reason}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">No</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {checkin.keywords && checkin.keywords.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {checkin.keywords.slice(0, 5).map((keyword, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
-                              >
-                                {keyword}
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm w-48 align-top">
+                          {checkin.needs_escalation ? (
+                            <div className="space-y-1">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Yes
                               </span>
-                            ))}
-                            {checkin.keywords.length > 5 && (
-                              <span className="text-xs text-gray-500">
-                                +{checkin.keywords.length - 5}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">None</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {checkin.transcript ? (
-                          <button
-                            onClick={() =>
-                              setExpandedTranscript(
-                                expandedTranscript === checkin.id ? null : checkin.id
-                              )
-                            }
-                            className="text-blue-600 hover:text-blue-800 underline"
-                          >
-                            {expandedTranscript === checkin.id ? 'Hide' : 'View'} Transcript
-                          </button>
-                        ) : (
-                          <span className="text-gray-400 italic">No transcript</span>
-                        )}
-                      </td>
-                    </tr>
-                    {checkin.transcript && expandedTranscript === checkin.id && (
-                      <tr>
-                        <td colSpan={8} className="bg-gray-50 px-6 pb-6 pt-0">
-                          <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-inner">
-                            <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                              {checkin.transcript}
-                            </p>
-                          </div>
+                              {checkin.escalation_reason && (
+                                <p className="text-xs text-gray-600 break-words whitespace-normal">
+                                  {checkin.escalation_reason}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">No</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {checkin.keywords && checkin.keywords.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {checkin.keywords.slice(0, 5).map((keyword, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+                                >
+                                  {keyword}
+                                </span>
+                              ))}
+                              {checkin.keywords.length > 5 && (
+                                <span className="text-xs text-gray-500">
+                                  +{checkin.keywords.length - 5}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">None</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {checkin.transcript ? (
+                            <button
+                              onClick={() =>
+                                setExpandedTranscript(
+                                  expandedTranscript === checkin.id ? null : checkin.id
+                                )
+                              }
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              {expandedTranscript === checkin.id ? 'Hide' : 'View'} Transcript
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 italic">No transcript</span>
+                          )}
                         </td>
                       </tr>
-                    )}
+                      {checkin.transcript && expandedTranscript === checkin.id && (
+                        <tr>
+                          <td colSpan={8} className="bg-gray-50 px-6 pb-6 pt-0">
+                            <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-inner">
+                              <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                {checkin.transcript}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
