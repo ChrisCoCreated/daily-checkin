@@ -22,17 +22,92 @@ export default function ContactsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [migrationStatus, setMigrationStatus] = useState<{
+    checked: boolean;
+    missing: boolean;
+    running: boolean;
+  }>({ checked: false, missing: false, running: false });
 
   useEffect(() => {
+    checkMigration();
     fetchContacts();
   }, []);
+
+  async function checkMigration() {
+    try {
+      const response = await fetch('/api/admin/migrations');
+      if (response.ok) {
+        const data = await response.json();
+        setMigrationStatus({
+          checked: true,
+          missing: data.missingTables?.includes('contacts') || false,
+          running: false,
+        });
+      }
+    } catch (err) {
+      console.error('Error checking migration:', err);
+    }
+  }
+
+  async function runMigration() {
+    try {
+      setMigrationStatus((prev) => ({ ...prev, running: true }));
+      const response = await fetch('/api/admin/migrations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'create_contacts_table' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to run migration');
+      }
+
+      setMessage({
+        type: 'success',
+        text: data.message || 'Migration completed successfully',
+      });
+
+      setMigrationStatus({
+        checked: true,
+        missing: false,
+        running: false,
+      });
+
+      // Refresh contacts after migration
+      setTimeout(() => {
+        fetchContacts();
+      }, 500);
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to run migration',
+      });
+      setMigrationStatus((prev) => ({ ...prev, running: false }));
+    }
+  }
 
   async function fetchContacts() {
     try {
       setLoading(true);
       const response = await fetch('/api/admin/contacts');
       if (!response.ok) {
-        throw new Error('Failed to fetch contacts');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || 'Failed to fetch contacts';
+        
+        // Check if it's a missing table error
+        if (errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
+          setMigrationStatus({
+            checked: true,
+            missing: true,
+            running: false,
+          });
+        }
+        
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       setContacts(data.contacts || []);
@@ -114,6 +189,28 @@ export default function ContactsPage() {
             Add Contact
           </button>
         </div>
+
+        {migrationStatus.checked && migrationStatus.missing && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-yellow-800 font-medium mb-1">
+                  Contacts table is missing
+                </p>
+                <p className="text-yellow-700 text-sm">
+                  The contacts table needs to be created in the database.
+                </p>
+              </div>
+              <button
+                onClick={runMigration}
+                disabled={migrationStatus.running}
+                className="ml-4 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium whitespace-nowrap"
+              >
+                {migrationStatus.running ? 'Creating...' : 'Create Table'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
