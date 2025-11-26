@@ -73,11 +73,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Greeting and gather response
-    const gatherUrl = buildUrl('/api/call/gather', { callSid });
+    // Start with chunkIndex 0 for the first question
+    const gatherUrl = buildUrl('/api/call/gather', { 
+      callSid,
+      questionIndex: '0',
+      chunkIndex: '0',
+    });
+    const partialResultUrl = buildUrl('/api/call/gather', { 
+      callSid,
+      questionIndex: '0',
+      chunkIndex: '0',
+      partial: 'true',
+    });
     
     const twiml = generateTwiML(
       say(GREETING_PROMPT) +
-      gather(gatherUrl, undefined, 10, 'auto')
+      gather(gatherUrl, undefined, 60, 'auto', partialResultUrl)
     );
 
     console.log('Returning TwiML for call:', callSid);

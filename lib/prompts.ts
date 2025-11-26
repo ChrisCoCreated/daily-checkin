@@ -6,7 +6,7 @@ export const FOLLOW_UP_PROMPTS = [
   "Thank you for sharing. Is there anything you'd like to talk about?",
 ];
 
-export const CLOSING_PROMPT = `Thank you for taking the time to talk. Have a great day!`;
+export const CLOSING_PROMPT = `Thanks for chatting with me today. Take care and have a good day.`;
 
 export const ANALYSIS_PROMPT = `Analyze the following conversation transcript from a daily wellbeing check-in call. 
 Respond with a JSON object containing:

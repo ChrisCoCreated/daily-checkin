@@ -111,12 +111,16 @@ export function say(text: string, voice = 'Polly.Emma-Neural'): string {
 export function gather(
   action: string,
   numDigits?: number,
-  timeout = 10,
-  speechTimeout = 'auto'
+  timeout = 60,
+  speechTimeout = 'auto',
+  partialResultCallback?: string
 ): string {
   const numDigitsAttr = numDigits ? ` numDigits="${numDigits}"` : '';
   const escapedAction = escapeXml(action);
-  return `<Gather action="${escapedAction}" method="POST" timeout="${timeout}" speechTimeout="${speechTimeout}" input="speech"${numDigitsAttr}></Gather>`;
+  const partialCallbackAttr = partialResultCallback 
+    ? ` partialResultCallback="${escapeXml(partialResultCallback)}"` 
+    : '';
+  return `<Gather action="${escapedAction}" method="POST" timeout="${timeout}" speechTimeout="${speechTimeout}" input="speech"${numDigitsAttr}${partialCallbackAttr}></Gather>`;
 }
 
 export function redirect(url: string): string {
